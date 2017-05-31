@@ -59,29 +59,6 @@ IF(WITH_RTC)
   SET(RTC_OPTIONS "/RTC1 /RTCc")
 ENDIF()
 
-IF(MSVC)
-  # Speedup system tests
-  INCLUDE(${CMAKE_SOURCE_DIR}/cmake/WindowsCache.cmake)
-  IF (MSVC)
-    SET(CONFIG_TYPES "DEBUG" "RELEASE" "RELWITHDEBINFO")
-    FOREACH(BUILD_TYPE ${CONFIG_TYPES})
-      FOREACH(COMPILER CXX C)
-        SET(COMPILER_FLAGS "${CMAKE_${COMPILER}_FLAGS_${BUILD_TYPE}}")
-        IF (NOT COMPILER_FLAGS STREQUAL "")
-          STRING(REPLACE "/MD" "/MT" COMPILER_FLAGS ${COMPILER_FLAGS})
-          IF (CMAKE_BUILD_TYPE STREQUAL "Debug")
-            SET(COMPILER_FLAGS "${COMPILER_FLAGS} ${RTC_OPTIONS}")
-            STRING(REPLACE "/Zi" "/ZI" COMPILER_FLAGS ${COMPILER_FLAGS})
-          ENDIF()
-          MESSAGE (STATUS "CMAKE_${COMPILER}_FLAGS_${BUILD_TYPE}= ${COMPILER_FLAGS}") 
-          SET(CMAKE_${COMPILER}_FLAGS_${BUILD_TYPE} ${COMPILER_FLAGS} CACHE 
-               STRING "overwritten by libmariadb" FORCE)
-        ENDIF()
-      ENDFOREACH()
-    ENDFOREACH()
-  ENDIF()
-ENDIF()
-
 # Disable dbug information for release builds 
 SET(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -DDBUG_OFF")
 SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDBUG_OFF")
@@ -181,6 +158,8 @@ INCLUDE(${CMAKE_SOURCE_DIR}/cmake/CheckIncludeFiles.cmake)
 INCLUDE(${CMAKE_SOURCE_DIR}/cmake/CheckFunctions.cmake)
 # check for various types
 INCLUDE(${CMAKE_SOURCE_DIR}/cmake/CheckTypes.cmake)
+# override the FindOpenSSL module
+LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # Check for OpenSSL
 IF(WITH_OPENSSL)

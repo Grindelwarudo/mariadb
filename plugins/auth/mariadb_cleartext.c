@@ -1,5 +1,5 @@
 /************************************************************************************
-   Copyright (C) 2014 MariaDB Corporation AB
+   Copyright (C) 2014-2018 MariaDB Corporation AB
    
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -16,7 +16,7 @@
    or write to the Free Software Foundation, Inc., 
    51 Franklin St., Fifth Floor, Boston, MA 02110, USA
 *************************************************************************************/
-#include <my_global.h>
+#include <ma_global.h>
 #include <mysql.h>
 #include <mysql/client_plugin.h>
 #include <string.h>
@@ -40,7 +40,7 @@
 
    RETURN
      CR_OK
-     CR_ERROR        if an error occured
+     CR_ERROR        if an error occurred
 */
 static int clear_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
 {
@@ -48,12 +48,19 @@ static int clear_password_auth_client(MYSQL_PLUGIN_VIO *vio, MYSQL *mysql)
     return CR_ERROR;
 
   /* write password including terminating zero character */
-  return vio->write_packet(vio, (const unsigned char *) mysql->passwd, strlen(mysql->passwd) + 1) ?
+  return vio->write_packet(vio, (const unsigned char *) mysql->passwd, (int)strlen(mysql->passwd) + 1) ?
          CR_ERROR : CR_OK;
 }
 /* }}} */
 
-mysql_declare_client_plugin(AUTHENTICATION)
+#ifndef PLUGIN_DYNAMIC
+struct st_mysql_client_plugin_AUTHENTICATION mysql_clear_password_client_plugin=
+#else
+struct st_mysql_client_plugin_AUTHENTICATION _mysql_client_plugin_declaration_ =
+#endif
+{
+  MYSQL_CLIENT_AUTHENTICATION_PLUGIN,
+  MYSQL_CLIENT_AUTHENTICATION_PLUGIN_INTERFACE_VERSION,
   "mysql_clear_password",
   "Georg Richter",
   "MariaDB clear password authentication plugin",
@@ -64,6 +71,6 @@ mysql_declare_client_plugin(AUTHENTICATION)
   NULL,
   NULL,
   clear_password_auth_client
-mysql_end_client_plugin;
+};
 
 

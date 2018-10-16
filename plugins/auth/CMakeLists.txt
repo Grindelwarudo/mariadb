@@ -1,44 +1,69 @@
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include)
+SET(AUTH_DIR ${CC_SOURCE_DIR}/plugins/auth)
 
-# Dialog plugin
-SET(DIALOG_SOURCES dialog.c ${CMAKE_SOURCE_DIR}/libmariadb/get_password.c)
-IF(WIN32)
-  SET_VERSION_INFO("TARGET:dialog"
-                   "FILE_TYPE:VFT_DLL"
-                   "SOURCE_FILE:plugins/auth/dialog.c"
-                   "ORIGINAL_FILE_NAME:dialog.dll"
-                   "FILE_DESCRIPTION:Authentication plugin")
-  SET(DIALOG_SOURCES ${DIALOG_SOURCES} ${CMAKE_SOURCE_DIR}/plugins/plugin.def)
+INCLUDE_DIRECTORIES(${AUTH_DIR})
+INCLUDE_DIRECTORIES(${CC_SOURCE_DIR}/include)
+
+#native password
+REGISTER_PLUGIN(TARGET mysql_native_password
+                TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                CONFIGURATIONS STATIC
+                DEFAULT STATIC
+                SOURCES ${CC_SOURCE_DIR}/plugins/auth/my_auth.c)
+
+#Dialog client authentication plugin
+REGISTER_PLUGIN(TARGET dialog
+                TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                CONFIGURATIONS DYNAMIC STATIC OFF
+                DEFAULT DYNAMIC
+                SOURCES ${CC_SOURCE_DIR}/plugins/auth/dialog.c
+                        ${CC_SOURCE_DIR}/libmariadb/get_password.c)
+
+#GSSAPI client authentication plugin
+IF(NOT WIN32)
+  INCLUDE(${CC_SOURCE_DIR}/cmake/FindGSSAPI.cmake)
+  IF(GSSAPI_FOUND)
+    SET(GSSAPI_SOURCES ${AUTH_DIR}/auth_gssapi_client.c ${AUTH_DIR}/gssapi_client.c ${AUTH_DIR}/gssapi_errmsg.c)
+  ENDIF()
+ELSE()
+  SET(GSSAPI_LIBS secur32)
+  SET(GSSAPI_SOURCES ${AUTH_DIR}/auth_gssapi_client.c ${AUTH_DIR}/sspi_client.c ${AUTH_DIR}/sspi_errmsg.c)
 ENDIF()
-ADD_LIBRARY(dialog SHARED ${dialog_RC} ${DIALOG_SOURCES})
-SET_TARGET_PROPERTIES(dialog PROPERTIES PREFIX "")
-SIGN_TARGET(dialog)
+IF(GSSAPI_SOURCES)
+  REGISTER_PLUGIN(TARGET auth_gssapi_client
+                  TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                  CONFIGURATIONS DYNAMIC STATIC OFF
+                  DEFAULT DYNAMIC
+                  SOURCES ${GSSAPI_SOURCES}
+                  INCLUDES ${CC_SOURCE_DIR}/plugins/auth ${GSSAPI_INCS}
+                  LIBRARIES ${GSSAPI_LIBS})
+ENDIF()
 
-INSTALL(TARGETS
-          dialog
-          RUNTIME DESTINATION "${PLUGIN_INSTALL_DIR}"
-          LIBRARY DESTINATION "${PLUGIN_INSTALL_DIR}"
-          ARCHIVE DESTINATION "${PLUGIN_INSTALL_DIR}")
+IF(${WITH_SSL} STREQUAL "OPENSSL" OR ${WITH_SSL} STREQUAL "SCHANNEL")
+  IF(WIN32)
+    SET(SHA256_LIBS crypt32)
+  ELSE()
+    SET(SHA256_LIBS ${SSL_LIBRARIES})
+  ENDIF()
+  REGISTER_PLUGIN(TARGET sha256_password
+                  TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                  CONFIGURATIONS DYNAMIC STATIC OFF
+                  DEFAULT DYNAMIC
+                  SOURCES ${AUTH_DIR}/sha256_pw.c
+                  LIBRARIES ${SHA256_LIBS})
+ENDIF()
+
+# old_password plugin
+REGISTER_PLUGIN(TARGET mysql_old_password
+                TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                CONFIGURATIONS STATIC DYNAMIC OFF
+                DEFAULT STATIC
+                SOURCES ${AUTH_DIR}/old_password.c)
+
 
 # Cleartext
-# Dialog plugin
-SET(CTEXT_SOURCES mariadb_cleartext.c)
-IF(WIN32)
-  SET_VERSION_INFO("TARGET:mysql_clear_password"
-                     "FILE_TYPE:VFT_DLL"
-                     "SOURCE_FILE:plugins/auth/mariadb_cleartext.c"
-                     "ORIGINAL_FILE_NAME:mysql_clear_password.dll"
-                     "FILE_DESCRIPTION:Authentication plugin")
-  SET(CTEXT_SOURCES ${CTEXT_SOURCES} ${CMAKE_SOURCE_DIR}/plugins/plugin.def)
-ENDIF()
-ADD_LIBRARY(mysql_clear_password SHARED ${mysql_clear_password_RC} ${CTEXT_SOURCES})
-SET_TARGET_PROPERTIES(mysql_clear_password PROPERTIES PREFIX "")
-SIGN_TARGET(mysql_clear_password)
+REGISTER_PLUGIN(TARGET mysql_clear_password
+                TYPE MARIADB_CLIENT_PLUGIN_AUTH
+                CONFIGURATIONS DYNAMIC STATIC OFF
+                DEFAULT DYNAMIC
+                SOURCES ${AUTH_DIR}/mariadb_cleartext.c)
 
-INSTALL(TARGETS
-          mysql_clear_password
-          RUNTIME DESTINATION "${PLUGIN_INSTALL_DIR}"
-          LIBRARY DESTINATION "${PLUGIN_INSTALL_DIR}"
-          ARCHIVE DESTINATION "${PLUGIN_INSTALL_DIR}")
-
-# Cleartext

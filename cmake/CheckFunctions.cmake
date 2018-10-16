@@ -8,7 +8,7 @@
 
 # This file is included by CMakeLists.txt and
 # checks for various functions.
-# You will find the appropiate defines in 
+# You will find the appropriate defines in 
 # include/my_config.h.in
 
 INCLUDE(CheckFunctionExists)
@@ -65,6 +65,8 @@ CHECK_FUNCTION_EXISTS (mlock HAVE_MLOCK)
 CHECK_FUNCTION_EXISTS (mlockall HAVE_MLOCKALL)
 CHECK_FUNCTION_EXISTS (mmap HAVE_MMAP)
 CHECK_FUNCTION_EXISTS (mmap64 HAVE_MMAP64)
+CHECK_FUNCTION_EXISTS (nl_langinfo HAVE_NL_LANGINFO)
+CHECK_FUNCTION_EXISTS (setlocale HAVE_SETLOCALE)
 CHECK_FUNCTION_EXISTS (perror HAVE_PERROR)
 CHECK_FUNCTION_EXISTS (poll HAVE_POLL)
 CHECK_FUNCTION_EXISTS (pread HAVE_PREAD)
